@@ -52,6 +52,8 @@ The build creates `dist/Review-Map.html` and `dist/Calibration-Desk.html`, with 
 
 ## Add your own places
 
+For a collection without demo places, skip `scripts/demo.py` and follow the intake → matching → build steps below. If you already tried the demo, stop the service and move `data/generated/` to a local backup before your first real matching run; matching will create a fresh generated dataset.
+
 ### 1. Acquire source content
 
 Install `yichen-content-archive` separately using the [upstream instructions](https://github.com/mcncarl/yichen-skills/tree/main/yichen-content-archive). Its code is **not bundled here**. Its personal-learning/non-commercial license remains separate from this repository’s MIT license; see [the upstream license](https://github.com/mcncarl/yichen-skills/blob/main/LICENSE).

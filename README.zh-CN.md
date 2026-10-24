@@ -52,6 +52,8 @@ python3 scripts/serve.py
 
 ## 换成自己的收藏
 
+从自己的收藏开始时，可跳过 `scripts/demo.py`，按下方“入库 → 匹配 → 构建”执行。如果已经体验过示例，先停止服务，将 `data/generated/` 移至本地备份，再进行第一次真实地点匹配；匹配脚本会创建新的生成数据。
+
 ### 1. 获取来源
 
 按照[上游说明](https://github.com/mcncarl/yichen-skills/tree/main/yichen-content-archive)单独安装 `yichen-content-archive`。本项目**不打包其代码**；上游的个人学习、非商业使用许可独立于本仓库 MIT 许可，详见[上游许可证](https://github.com/mcncarl/yichen-skills/blob/main/LICENSE)。
