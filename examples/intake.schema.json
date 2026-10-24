@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Review Map intake",
+  "type": "object",
+  "required": ["schemaVersion", "sources", "places"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "sources": {"type": "array", "items": {"type": "object", "required": ["source_id", "platform", "capture_status", "content_state", "text_source", "text"], "properties": {
+      "source_id": {"type": "string", "minLength": 1}, "platform": {"type": "string"}, "canonical_url": {"type": "string"}, "title": {"type": "string"},
+      "capture_status": {"enum": ["success", "partial", "failed", "unsupported", "needs_auth"]},
+      "content_state": {"enum": ["complete", "partial", "metadata_only", "media_complete_text_partial", "stub"]},
+      "text_source": {"enum": ["platform_original", "platform_auto", "platform_description", "user_provided", "jina_reader", "local_ocr", "authorized_asr", "none"]}, "text": {"type": "string"}
+    }}},
+    "places": {"type": "array", "items": {"type": "object", "required": ["name", "category", "sourceIds", "confirmation", "evidence"], "properties": {
+      "name": {"type": "string", "minLength": 1}, "city": {"type": "string"}, "category": {"type": "string"},
+      "recommendedFood": {"type": "array", "items": {"type": "string"}}, "sourceIds": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+      "confirmation": {"enum": ["confirmed", "needs_review"]},
+      "evidence": {"type": "array", "items": {"type": "object", "required": ["source_id", "quote"], "properties": {"source_id": {"type": "string"}, "quote": {"type": "string"}}}
+    }}}
+  }
+}

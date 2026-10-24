@@ -1,0 +1,20 @@
+[Unit]
+Description=Review Map
+After=network-online.target
+
+[Service]
+Type=simple
+User=review-map
+Group=review-map
+WorkingDirectory=/opt/review-map/current
+ExecStart=/usr/bin/python3 /opt/review-map/current/scripts/serve.py --host 127.0.0.1 --port 8765 --db /var/lib/review-map/reviews.sqlite3 --secure-cookie
+Restart=on-failure
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/review-map
+
+[Install]
+WantedBy=multi-user.target

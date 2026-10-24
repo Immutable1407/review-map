@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "sources": [{
+    "source_id": "example:city-notes",
+    "platform": "manual",
+    "canonical_url": "https://example.org/city-notes",
+    "title": "Synthetic city notes",
+    "capture_status": "success",
+    "content_state": "complete",
+    "text_source": "user_provided",
+    "text": "以下为合成示例：北京的示例纸页咖啡推荐示例拿铁。另有一家示例待确认店，名称还未核实。"
+  }],
+  "places": [
+    {"name":"示例纸页咖啡","city":"北京","category":"咖啡","recommendedFood":["示例拿铁"],"sourceIds":["example:city-notes"],"confirmation":"confirmed","evidence":[{"source_id":"example:city-notes","quote":"北京的示例纸页咖啡推荐示例拿铁"}]},
+    {"name":"示例待确认店","city":"","category":"美食","recommendedFood":[],"sourceIds":["example:city-notes"],"confirmation":"needs_review","evidence":[]}
+  ]
+}

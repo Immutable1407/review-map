@@ -1,0 +1,6 @@
+[
+  {"id":"demo:paper-cafe","name":"示例纸页咖啡","savedName":"示例纸页咖啡","savedNames":["示例纸页咖啡"],"city":"北京","district":"示例街区","address":"演示位置，非真实商家","location":[116.403,39.917],"category":"咖啡","tags":["咖啡","甜品"],"recommendedFood":["示例拿铁"],"note":"合成示例数据，仅用于体验界面。","source":"example-input.json","amapPoiId":"","sourceIds":["example:city-notes"]},
+  {"id":"demo:noodle-counter","name":"示例巷口面馆","savedName":"示例巷口面馆","savedNames":["示例巷口面馆","示例小面店"],"city":"北京","district":"示例街区","address":"演示位置，非真实商家","location":[116.409,39.914],"category":"美食","tags":["美食"],"recommendedFood":["示例番茄面"],"note":"合成示例数据。","source":"example-input.json","amapPoiId":"","sourceIds":["example:city-notes"]},
+  {"id":"demo:river-garden","name":"示例河畔花园","savedName":"示例河畔花园","savedNames":["示例河畔花园"],"city":"北京","district":"示例街区","address":"演示位置，非真实景点","location":[116.414,39.92],"category":"公园","tags":["公园","游玩"],"recommendedFood":[],"note":"合成示例数据。","source":"example-input.json","amapPoiId":"","sourceIds":["example:city-notes"]},
+  {"id":"demo:small-gallery","name":"示例小展馆","savedName":"示例小展馆","savedNames":["示例小展馆"],"city":"北京","district":"示例街区","address":"演示位置，非真实展馆","location":[116.399,39.922],"category":"展馆","tags":["展馆"],"recommendedFood":[],"note":"合成示例数据。","source":"example-input.json","amapPoiId":"","sourceIds":["example:city-notes"]}
+]

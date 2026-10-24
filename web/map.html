@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Review Map</title>
+<meta name="description" content="收藏地点、附近推荐与个人评价。" />
+<link rel="stylesheet" href="./assets/vendor/maplibre-gl.css" />
+<link rel="stylesheet" href="./assets/atlas-base.css" />
+<link rel="stylesheet" href="./assets/atlas.css" />
+<link rel="stylesheet" href="./assets/atlas-v2.css" />
+</head>
+<body>
+<div class="app">
+  <!-- ============ PANEL ============ -->
+  <aside class="panel" id="panel" aria-label="地点索引">
+    <button class="sheet-grab" type="button" aria-label="关闭地点索引"></button>
+    <header class="masthead">
+      <div class="brand-row">
+        <a class="brand-mark" href="/" title="Review Map">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.1" aria-hidden="true">
+            <circle cx="12" cy="12" r="9.2" />
+            <path d="M12 2.6v18.8M2.6 12h18.8" opacity=".35" />
+            <path d="m12 5.4 1.7 5.2 4.6 1.4-4.6 1.4L12 18.6l-1.7-5.2L5.7 12l4.6-1.4z" fill="currentColor" stroke="none" />
+          </svg>
+          <span class="caps">Review Map</span>
+        </a>
+        <button class="account" id="account" aria-haspopup="dialog" aria-label="登录">
+          <span class="avatar" aria-hidden="true">R</span>
+          <span class="acc-label" id="accLabel">登录</span>
+        </button>
+      </div>
+      <div class="brand-title">
+        <h1>Review Map<span>.</span></h1>
+      </div>
+    </header>
+
+    <div class="search" id="searchWrap">
+      <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <circle cx="10.5" cy="10.5" r="6.5" />
+        <path d="m15.4 15.4 4.1 4.1" stroke-linecap="round" />
+      </svg>
+      <input id="q" type="search" placeholder="搜店名、街区、菜系" autocomplete="off" spellcheck="false" aria-label="搜索地点" />
+      <kbd>/</kbd>
+      <button class="clear" id="clearQ" aria-label="清除搜索">
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6 6 18" /></svg>
+      </button>
+    </div>
+
+    <div class="filter-block">
+      <div class="filter-head">
+        <span class="caps">城市</span>
+        <button class="reset" id="resetCity" hidden>全部城市</button>
+      </div>
+      <div class="city-row" id="cities" role="group" aria-label="城市筛选"></div>
+    </div>
+
+    <div class="filter-block" style="margin-top:12px">
+      <div class="filter-head">
+        <span class="caps">分类</span>
+        <button class="reset" id="resetCat" hidden>清除</button>
+      </div>
+      <div class="cats" id="cats" role="group" aria-label="分类筛选"></div>
+    </div>
+
+    <div class="index-head">
+      <span class="caps" id="scope">The index</span>
+      <span class="count" id="count" aria-live="polite"></span>
+    </div>
+
+    <div class="list thin-scroll" id="list" aria-live="polite"></div>
+
+    <footer class="panel-foot">
+      <button class="dice" id="random">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+          <rect x="4" y="4" width="16" height="16" rx="2.5" />
+          <circle cx="9" cy="9" r="1" fill="currentColor" />
+          <circle cx="15" cy="15" r="1" fill="currentColor" />
+          <circle cx="15" cy="9" r="1" fill="currentColor" />
+          <circle cx="9" cy="15" r="1" fill="currentColor" />
+        </svg>
+        随便挑一处 <kbd>R</kbd>
+      </button>
+      <span class="hint"><a href="./calibrate/">校对台</a><span id="serviceState" role="status">正在连接</span></span>
+    </footer>
+  </aside>
+
+  <!-- ============ STAGE ============ -->
+  <main class="stage" id="stage">
+    <div id="map" aria-label="地图"></div>
+
+    <div class="loading" id="loading">
+      <div class="box">
+        <div class="t">Review Map</div>
+        <div class="s">loading the index</div>
+        <div class="bar"><i></i></div>
+      </div>
+    </div>
+
+    <div class="nethint" id="nethint">地图瓦片加载缓慢 · 索引仍可使用</div>
+
+    <div class="map-zoom">
+      <button id="zin" aria-label="放大">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 5v14M5 12h14" /></svg>
+      </button>
+      <button id="zout" aria-label="缩小">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 12h14" /></svg>
+      </button>
+      <button id="zfit" aria-label="回到城市全景">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="12" cy="12" r="6.5" /><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none" /></svg>
+      </button>
+    </div>
+
+    <div class="coords"><span class="pin"></span><span id="coords">39.9042° N · 116.4074° E</span></div>
+
+    <div class="stage-empty" id="stageEmpty">
+      <div class="big">Nothing here.</div>
+      <p>这一个筛选下还没有地点。</p>
+      <button id="clearAll">清除全部筛选</button>
+    </div>
+
+    <!-- place plate -->
+    <article class="plate" id="plate" aria-label="地点详情" aria-hidden="true" inert></article>
+    <button id="locate" class="locate-control" aria-label="定位到我" title="定位到我">◎</button>
+  </main>
+</div>
+
+<!-- mobile top bar -->
+<div class="mbar">
+  <a class="b" href="/" aria-label="Review Map">Review Map<em>.</em></a>
+  <div class="acts">
+    <button id="mSearch">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m15.4 15.4 4.1 4.1" stroke-linecap="round" /></svg>
+      搜索
+    </button>
+    <button id="mList">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M4 7h16M4 12h16M4 17h10" stroke-linecap="round" /></svg>
+      索引 <span id="mCount" hidden></span>
+    </button>
+    <button id="mAccount" aria-label="登录">登录</button>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<dialog class="auth" id="authDialog" aria-labelledby="authTitle">
+  <div class="auth-top">
+    <span class="cap">登录</span>
+    <button class="auth-x" id="authClose" aria-label="Close">
+      <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 5l14 14M19 5 5 19" /></svg>
+    </button>
+  </div>
+  <div id="authGuest">
+    <h2 id="authTitle">登录</h2>
+    <p>登录后可以评分和撰写评价。</p>
+    <form id="authForm">
+      <label for="authPass">密码</label>
+      <input id="authPass" type="password" autocomplete="current-password" minlength="8" maxlength="256" required />
+      <div class="auth-err" id="authErr" role="alert"></div>
+      <button class="btn" type="submit">登录</button>
+    </form>
+  </div>
+  <div id="authOwner" hidden>
+    <h2>Review Map</h2>
+    <p>已登录。</p>
+    <div class="auth-row">
+      <button class="btn" id="authOut" type="button">退出登录</button>
+      <button class="btn" id="authDone" type="button">完成</button>
+    </div>
+  </div>
+</dialog>
+
+<noscript><p style="position:fixed;inset:0;background:#f4efe3;padding:40px;font-family:serif">Review Map needs JavaScript.</p></noscript>
+
+<script src="./assets/vendor/maplibre-gl.js"></script>
+<script src="./assets/vendor/positron-style.js"></script>
+<script src="./assets/vendor/gcoord.js"></script>
+<script src="../data/generated/places-data.js"></script>
+<script src="./assets/atlas.js"></script>
+</body>
+</html>

@@ -1,0 +1,606 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <meta name="theme-color" content="#efece5" />
+    <title>地图校对台</title>
+    <meta name="description" content="确认高德候选、补充缺失地址、调整地点标签，并把进度保存在本机。" />
+    <style>
+      :root {
+        --ink: #252421;
+        --muted: #77736b;
+        --paper: #efece5;
+        --card: #fbfaf7;
+        --line: rgba(37, 36, 33, .12);
+        --orange: #e9633f;
+        --orange-soft: #fae4dc;
+        --green: #34775b;
+        --green-soft: #dfeee6;
+        --blue: #426e96;
+        --blue-soft: #e1ebf3;
+        --danger: #a84a3a;
+        --shadow: 0 18px 52px rgba(61, 54, 44, .10);
+      }
+
+      * { box-sizing: border-box; }
+      html { min-height: 100%; background: var(--paper); }
+      body {
+        min-width: 960px;
+        margin: 0;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 92% -10%, rgba(233,99,63,.13), transparent 28rem),
+          linear-gradient(180deg, #f5f2ec 0, var(--paper) 42rem);
+        font-family: Inter, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      button, input, textarea { font: inherit; }
+      button { color: inherit; }
+
+      .shell { width: min(1280px, calc(100% - 72px)); margin: 0 auto; padding: 46px 0 80px; }
+      .topbar { display: grid; grid-template-columns: 1fr auto; gap: 40px; align-items: end; margin-bottom: 28px; }
+      .kicker { margin: 0 0 9px; color: var(--orange); font-size: 12px; font-weight: 800; letter-spacing: .15em; }
+      h1 { margin: 0; font-family: Georgia, "Noto Serif SC", serif; font-size: 42px; line-height: 1; letter-spacing: -.035em; }
+      .lede { max-width: 620px; margin: 13px 0 0; color: var(--muted); font-size: 14px; line-height: 1.7; }
+      .top-actions { display: flex; gap: 10px; }
+      .btn {
+        min-height: 42px; padding: 0 16px; border: 1px solid var(--line); border-radius: 13px;
+        background: rgba(255,255,255,.7); cursor: pointer; font-size: 13px; font-weight: 720;
+        transition: transform .16s, background .16s;
+      }
+      .btn:hover { transform: translateY(-1px); background: #fff; }
+      .btn.primary { color: #fff; border-color: var(--ink); background: var(--ink); }
+
+      .status-panel {
+        display: grid; grid-template-columns: 1fr 180px 180px 180px; gap: 20px; align-items: center;
+        padding: 22px 24px; border: 1px solid rgba(255,255,255,.8); border-radius: 23px;
+        background: rgba(251,250,247,.84); box-shadow: var(--shadow); backdrop-filter: blur(14px);
+      }
+      .progress-copy { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+      .progress-copy strong { font-family: Georgia, "Noto Serif SC", serif; font-size: 25px; }
+      .progress-copy span { color: var(--muted); font-size: 12px; }
+      .progress-track { height: 9px; overflow: hidden; border-radius: 20px; background: #e1ddd4; }
+      .progress-fill { width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--orange), #ef9d4d); transition: width .3s ease; }
+      .stat { padding-left: 24px; border-left: 1px solid var(--line); }
+      .stat-label { margin: 0 0 6px; color: var(--muted); font-size: 11px; font-weight: 750; letter-spacing: .08em; }
+      .stat-value { margin: 0; font-family: Georgia, serif; font-size: 25px; }
+
+      .workspace { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 24px; align-items: start; margin-top: 24px; }
+      .rail { position: sticky; top: 20px; padding: 16px; border: 1px solid var(--line); border-radius: 21px; background: rgba(251,250,247,.78); }
+      .tab {
+        width: 100%; min-height: 58px; display: grid; grid-template-columns: 32px 1fr auto; gap: 10px;
+        align-items: center; padding: 8px 12px; text-align: left; border: 0; border-radius: 15px;
+        background: transparent; cursor: pointer; font-weight: 700;
+      }
+      .tab + .tab { margin-top: 5px; }
+      .tab:hover { background: rgba(255,255,255,.72); }
+      .tab.active { background: #fff; box-shadow: 0 8px 24px rgba(58,50,40,.08); }
+      .tab-index { width: 29px; height: 29px; display: grid; place-items: center; border-radius: 9px; color: var(--blue); background: var(--blue-soft); font-size: 12px; }
+      .tab:nth-child(2) .tab-index { color: #85581d; background: #f3e4cc; }
+      .tab:nth-child(3) .tab-index { color: #725494; background: #ebe3f3; }
+      .tab-count { min-width: 28px; padding: 4px 7px; border-radius: 999px; color: var(--muted); background: #ece8e0; text-align: center; font-size: 11px; }
+      .rail-note { margin: 16px 6px 4px; padding-top: 15px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; line-height: 1.65; }
+
+      .content { min-width: 0; }
+      .toolbar {
+        position: sticky; z-index: 10; top: 14px; display: grid; grid-template-columns: minmax(280px, 1fr) auto;
+        gap: 14px; align-items: center; margin-bottom: 14px; padding: 12px; border: 1px solid rgba(255,255,255,.72);
+        border-radius: 18px; background: rgba(245,242,236,.90); backdrop-filter: blur(16px);
+      }
+      .search { position: relative; }
+      .search::before { position: absolute; left: 14px; top: 13px; width: 9px; height: 9px; content: ""; border: 2px solid #858077; border-radius: 50%; }
+      .search::after { position: absolute; left: 24px; top: 24px; width: 6px; height: 2px; content: ""; transform: rotate(45deg); border-radius: 2px; background: #858077; }
+      #searchInput { width: 100%; height: 42px; padding: 0 14px 0 38px; border: 1px solid var(--line); border-radius: 13px; outline: none; background: #fff; }
+      #searchInput:focus { border-color: rgba(233,99,63,.55); box-shadow: 0 0 0 4px rgba(233,99,63,.10); }
+      .toggle { display: flex; align-items: center; gap: 9px; padding-right: 6px; color: var(--muted); font-size: 12px; cursor: pointer; white-space: nowrap; }
+      .toggle input { width: 17px; height: 17px; accent-color: var(--orange); }
+
+      .section-heading { display: flex; justify-content: space-between; align-items: flex-end; margin: 23px 5px 12px; }
+      .section-heading h2 { margin: 0; font-family: Georgia, "Noto Serif SC", serif; font-size: 24px; }
+      .section-heading p { margin: 0; color: var(--muted); font-size: 12px; }
+
+      .review-card { overflow: hidden; margin-bottom: 11px; border: 1px solid var(--line); border-radius: 18px; background: var(--card); box-shadow: 0 5px 18px rgba(52,47,40,.035); }
+      .review-card[open] { border-color: rgba(66,110,150,.28); box-shadow: 0 12px 30px rgba(52,47,40,.07); }
+      .review-summary { min-height: 73px; display: grid; grid-template-columns: 1fr auto; gap: 20px; align-items: center; padding: 15px 18px; list-style: none; cursor: pointer; }
+      .review-summary::-webkit-details-marker { display: none; }
+      .review-name-row { display: flex; align-items: center; gap: 9px; min-width: 0; }
+      .review-name { overflow: hidden; font-size: 15px; font-weight: 760; text-overflow: ellipsis; white-space: nowrap; }
+      .city-tag { flex: 0 0 auto; padding: 4px 7px; border-radius: 7px; color: var(--blue); background: var(--blue-soft); font-size: 10px; font-weight: 750; }
+      .meta { margin-top: 6px; color: var(--muted); font-size: 11px; }
+      .review-status { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 11px; }
+      .review-status::before { width: 8px; height: 8px; content: ""; border: 2px solid #b6b0a7; border-radius: 50%; }
+      .review-card.done .review-status { color: var(--green); font-weight: 750; }
+      .review-card.done .review-status::before { border-color: var(--green); background: var(--green); box-shadow: inset 0 0 0 2px var(--card); }
+      .review-body { padding: 0 18px 18px; border-top: 1px solid var(--line); }
+      .hint { margin: 14px 0 10px; color: var(--muted); font-size: 12px; }
+      .options { display: grid; gap: 8px; }
+      .option { position: relative; display: grid; grid-template-columns: 21px 1fr; gap: 11px; align-items: start; padding: 13px 14px; border: 1px solid var(--line); border-radius: 14px; background: #fff; cursor: pointer; transition: border-color .16s, transform .16s, background .16s; }
+      .option:hover { transform: translateX(2px); border-color: rgba(66,110,150,.4); }
+      .option:has(input:checked) { border-color: var(--green); background: var(--green-soft); }
+      .option input { width: 17px; height: 17px; margin: 2px 0 0; accent-color: var(--green); }
+      .option-name { display: block; font-size: 13px; font-weight: 740; }
+      .option-address { display: block; margin-top: 4px; color: var(--muted); font-size: 11px; line-height: 1.55; }
+      .option.wrong { color: var(--danger); background: #fff8f6; }
+      .option.wrong:has(input:checked) { border-color: var(--danger); background: #f7e2dd; }
+      .card-actions { min-height: 28px; display: flex; justify-content: flex-end; align-items: center; margin-top: 10px; }
+      .clear-choice { display: none; border: 0; color: var(--muted); background: transparent; cursor: pointer; font-size: 11px; text-decoration: underline; text-underline-offset: 3px; }
+      .review-card.done .clear-choice { display: block; }
+
+      .address-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px; }
+      .address-card { min-height: 126px; padding: 17px; text-align: left; border: 1px solid var(--line); border-radius: 18px; background: var(--card); cursor: pointer; transition: transform .16s, border-color .16s, box-shadow .16s; }
+      .address-card:hover { transform: translateY(-2px); border-color: rgba(233,99,63,.35); box-shadow: 0 12px 26px rgba(52,47,40,.06); }
+      .address-card.done { border-color: rgba(52,119,91,.35); background: linear-gradient(135deg, var(--card), var(--green-soft)); }
+      .address-head { display: flex; justify-content: space-between; gap: 15px; align-items: start; }
+      .address-name { font-size: 14px; font-weight: 760; }
+      .address-state { flex: 0 0 auto; color: var(--orange); font-size: 11px; font-weight: 730; }
+      .address-card.done .address-state { color: var(--green); }
+      .address-meta { margin: 7px 0 0; color: var(--muted); font-size: 11px; }
+      .saved-address { margin: 14px 0 0; display: -webkit-box; overflow: hidden; color: #375e4c; font-size: 12px; line-height: 1.5; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+      .tag-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px; }
+      .tag-card { padding: 17px; border: 1px solid var(--line); border-radius: 18px; background: var(--card); }
+      .tag-card.modified { border-color: rgba(112,82,148,.38); background: linear-gradient(135deg, var(--card), #f0e9f6); }
+      .tag-head { display: flex; justify-content: space-between; gap: 14px; align-items: start; }
+      .tag-name { font-size: 14px; font-weight: 760; }
+      .tag-state { flex: 0 0 auto; color: var(--muted); font-size: 10px; font-weight: 740; }
+      .tag-card.modified .tag-state { color: #725494; }
+      .tag-meta { margin: 6px 0 13px; overflow: hidden; color: var(--muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+      .tag-options { display: flex; flex-wrap: wrap; gap: 7px; }
+      .tag-choice { position: relative; cursor: pointer; }
+      .tag-choice input { position: absolute; opacity: 0; pointer-events: none; }
+      .tag-choice span { min-height: 30px; display: grid; place-items: center; padding: 0 11px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); background: #fff; font-size: 11px; font-weight: 700; transition: .15s; }
+      .tag-choice:hover span { transform: translateY(-1px); border-color: rgba(112,82,148,.38); }
+      .tag-choice input:checked + span { color: #fff; border-color: #725494; background: #725494; }
+      .empty { padding: 60px 20px; color: var(--muted); text-align: center; font-size: 13px; }
+
+      .storage-warning { display: none; margin: 0 0 16px; padding: 12px 15px; border: 1px solid #deb7ae; border-radius: 13px; color: #7d3a2f; background: #f9e8e4; font-size: 12px; }
+
+      .modal-backdrop { position: fixed; z-index: 50; inset: 0; display: none; place-items: center; padding: 30px; background: rgba(37,36,33,.44); backdrop-filter: blur(7px); }
+      .modal-backdrop.open { display: grid; }
+      .modal { width: min(560px, 100%); padding: 25px; border: 1px solid rgba(255,255,255,.8); border-radius: 24px; background: var(--card); box-shadow: 0 28px 80px rgba(37,36,33,.24); }
+      .modal-top { display: flex; justify-content: space-between; gap: 20px; align-items: start; }
+      .modal-kicker { margin: 0 0 7px; color: var(--orange); font-size: 11px; font-weight: 800; letter-spacing: .1em; }
+      .modal h2 { margin: 0; font-family: Georgia, "Noto Serif SC", serif; font-size: 26px; }
+      .modal-close { width: 35px; height: 35px; border: 0; border-radius: 50%; background: #ece8df; cursor: pointer; font-size: 19px; }
+      .modal-help { margin: 12px 0 15px; color: var(--muted); font-size: 12px; line-height: 1.65; }
+      #addressInput { width: 100%; min-height: 114px; resize: vertical; padding: 13px 14px; border: 1px solid var(--line); border-radius: 14px; outline: none; background: #fff; line-height: 1.6; }
+      #addressInput:focus { border-color: rgba(233,99,63,.55); box-shadow: 0 0 0 4px rgba(233,99,63,.10); }
+      .modal-actions { display: flex; justify-content: space-between; gap: 10px; margin-top: 15px; }
+      .modal-right { display: flex; gap: 9px; }
+      #deleteAddress { visibility: hidden; color: var(--danger); }
+
+      .toast { position: fixed; z-index: 80; right: 24px; bottom: 24px; padding: 12px 16px; border-radius: 12px; color: #fff; background: var(--ink); box-shadow: var(--shadow); opacity: 0; transform: translateY(12px); pointer-events: none; transition: .22s; font-size: 12px; }
+      .toast.show { opacity: 1; transform: translateY(0); }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <p class="kicker">MAP CALIBRATION DESK</p>
+          <h1>地图校对台</h1>
+          <p class="lede">依次完成选择题、填空题和可选的标签多选题。每次操作都会自动保存在这台电脑上，下次打开接着做。</p>
+        </div>
+        <div class="top-actions">
+          <button id="exportBtn" class="btn primary" type="button">导出校对结果</button>
+        </div>
+      </header>
+
+      <div id="storageWarning" class="storage-warning">当前浏览器不允许本地保存。你仍可操作并导出结果，但关闭页面后进度可能丢失。</div>
+
+      <section class="status-panel" aria-label="确认进度">
+        <div>
+          <div class="progress-copy"><strong id="progressText">0 / 0</strong><span id="progressPercent">0%</span></div>
+          <div class="progress-track"><div id="progressFill" class="progress-fill"></div></div>
+        </div>
+        <div class="stat"><p class="stat-label">候选确认</p><p id="candidateStat" class="stat-value">0 / 0</p></div>
+        <div class="stat"><p class="stat-label">地址补充</p><p id="addressStat" class="stat-value">0 / 0</p></div>
+        <div class="stat"><p class="stat-label">标签调整</p><p id="tagStat" class="stat-value">0 处</p></div>
+      </section>
+
+      <div class="workspace">
+        <nav class="rail" aria-label="确认部分">
+          <button class="tab active" data-tab="candidates" type="button">
+            <span class="tab-index">01</span><span>选择题 · 选地点</span><span id="candidateTabCount" class="tab-count">0</span>
+          </button>
+          <button class="tab" data-tab="addresses" type="button">
+            <span class="tab-index">02</span><span>填空题 · 补地址</span><span id="addressTabCount" class="tab-count">0</span>
+          </button>
+          <button class="tab" data-tab="tags" type="button">
+            <span class="tab-index">03</span><span>多选题 · 改标签</span><span id="tagTabCount" class="tab-count">0</span>
+          </button>
+          <p class="rail-note">数据新增后重新生成这份页面即可。已确认项目使用稳定编号保存，新项目不会冲掉旧进度。</p>
+        </nav>
+
+        <section class="content">
+          <div class="toolbar">
+            <div class="search"><input id="searchInput" type="search" autocomplete="off" placeholder="搜索地点、城市或候选地址" aria-label="搜索待确认地点" /></div>
+            <label class="toggle"><input id="pendingOnly" type="checkbox" /> <span id="toggleText">只看未确认</span></label>
+          </div>
+          <div id="contentRoot"></div>
+        </section>
+      </div>
+    </main>
+
+    <div id="modalBackdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <section class="modal">
+        <div class="modal-top">
+          <div><p class="modal-kicker">补充具体地址</p><h2 id="modalTitle"></h2></div>
+          <button id="modalClose" class="modal-close" type="button" aria-label="关闭">×</button>
+        </div>
+        <p class="modal-help">建议写完整一些：城市、区、街道或商场、楼层和铺位。保存后会立即记录在本机。</p>
+        <textarea id="addressInput" placeholder="例如：北京市朝阳区三里屯路 ×× 商场 3 层 301"></textarea>
+        <div class="modal-actions">
+          <button id="deleteAddress" class="btn" type="button">清除已填地址</button>
+          <div class="modal-right">
+            <button id="modalCancel" class="btn" type="button">取消</button>
+            <button id="saveAddress" class="btn primary" type="button">保存地址</button>
+          </div>
+        </div>
+      </section>
+    </div>
+    <div id="toast" class="toast" role="status"></div>
+
+    <script src="../data/generated/review-data.js"></script>
+    <script src="../data/generated/review-progress-seed.js"></script>
+    <script src="../data/generated/places-data.js"></script>
+    <script>
+      (() => {
+        "use strict";
+        const STORAGE_KEY = "review-map-calibration:v1";
+        const items = Array.isArray(window.PLACE_REVIEW_DATA) ? window.PLACE_REVIEW_DATA : [];
+        const allPlaces = Array.isArray(window.PLACES_DATA) ? window.PLACES_DATA : [];
+        const places = allPlaces;
+        const TAG_OPTIONS = ["美食", "甜品", "咖啡", "酒吧", "公园", "展馆", "小店", "游玩"];
+        const originalCandidateItems = items.filter((item) => item.candidates?.length);
+        const state = { tab: "candidates", query: "", pendingOnly: false, modalItemId: null, progress: {} };
+        const $ = (selector) => document.querySelector(selector);
+        const root = $("#contentRoot");
+        let storageAvailable = true;
+        let toastTimer;
+
+        function loadProgress() {
+          try {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            state.progress = saved ? JSON.parse(saved) : { ...(window.PLACE_REVIEW_SEED || {}) };
+            if (!saved && Object.keys(state.progress).length) saveProgress();
+          } catch (_) {
+            storageAvailable = false;
+            state.progress = {};
+            $("#storageWarning").style.display = "block";
+          }
+        }
+
+        function saveProgress() {
+          if (!storageAvailable) return;
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state.progress));
+          } catch (_) {
+            storageAvailable = false;
+            $("#storageWarning").style.display = "block";
+          }
+        }
+
+        function escapeHtml(value) {
+          return String(value ?? "").replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char]);
+        }
+
+        function tagKey(placeId) { return `tag:${placeId}`; }
+
+        function originalTags(place) {
+          return Array.isArray(place.tags) && place.tags.length ? place.tags : [place.category].filter(Boolean);
+        }
+
+        function currentTags(place) {
+          return state.progress[tagKey(place.id)]?.tags || originalTags(place);
+        }
+
+        function tagsEqual(left, right) {
+          return left.length === right.length && left.every((tag) => right.includes(tag));
+        }
+
+        function tagChanged(place) {
+          return Boolean(state.progress[tagKey(place.id)]);
+        }
+
+        function getGroups() {
+          const candidates = [];
+          const addresses = [];
+          for (const item of items) {
+            const kind = state.progress[item.id]?.kind;
+            if (!item.candidates?.length || kind === "all_wrong" || kind === "manual_address") addresses.push(item);
+            else candidates.push(item);
+          }
+          return { candidates, addresses };
+        }
+
+        function isDone(item) {
+          const kind = state.progress[item.id]?.kind;
+          return kind === "candidate" || kind === "candidates" || kind === "manual_address";
+        }
+
+        function reviewMatches(item) {
+          if (state.pendingOnly && isDone(item)) return false;
+          if (!state.query) return true;
+          const text = [item.name, item.city, item.source, item.reason, ...item.candidates.flatMap((c) => [c.name, c.district, c.address])].join(" ").toLowerCase();
+          return text.includes(state.query.toLowerCase());
+        }
+
+        function tagMatches(place) {
+          if (state.pendingOnly && !tagChanged(place)) return false;
+          if (!state.query) return true;
+          const text = [place.name, place.savedName, ...(place.savedNames || []), place.city, place.district, place.address, ...currentTags(place)].join(" ").toLowerCase();
+          return text.includes(state.query.toLowerCase());
+        }
+
+        function candidateLabel(item) {
+          const choice = state.progress[item.id];
+          if (!choice) return "待确认";
+          if (choice.kind === "all_wrong") return "已选：全不对";
+          const candidateIds = choice.kind === "candidate" ? [choice.candidateId] : (choice.candidateIds || []);
+          const selected = item.candidates.filter((candidate) => candidateIds.includes(candidate.id));
+          if (!selected.length) return "已确认";
+          if (selected.length === 1) return `已选：${selected[0].name}`;
+          return `已选 ${selected.length} 个候选`;
+        }
+
+        function renderCandidateCard(item) {
+          const choice = state.progress[item.id];
+          const selectedIds = choice?.kind === "candidate" ? [choice.candidateId] : (choice?.candidateIds || []);
+          const options = item.candidates.map((candidate) => `
+            <label class="option">
+              <input type="checkbox" name="choice-${item.id}" value="${escapeHtml(candidate.id)}" ${selectedIds.includes(candidate.id) ? "checked" : ""}>
+              <span><span class="option-name">${escapeHtml(candidate.name)}</span><span class="option-address">${escapeHtml([candidate.district, candidate.address].filter(Boolean).join(" · "))}</span></span>
+            </label>`).join("");
+          return `
+            <details class="review-card ${choice ? "done" : ""}" data-id="${item.id}">
+              <summary class="review-summary">
+                <span><span class="review-name-row"><span class="review-name">${escapeHtml(item.name)}</span><span class="city-tag">${escapeHtml(item.city || "城市未知")}</span></span><span class="meta">${escapeHtml(item.source)} · ${escapeHtml(item.reason)}</span></span>
+                <span class="review-status">${escapeHtml(candidateLabel(item))}</span>
+              </summary>
+              <div class="review-body">
+                <p class="hint">可以选择一个或多个正确地点；“全不对”不能与其他候选同时选择。</p>
+                <div class="options">${options}
+                  <label class="option wrong">
+                    <input type="checkbox" name="choice-${item.id}" value="__all_wrong__" ${choice?.kind === "all_wrong" ? "checked" : ""}>
+                    <span><span class="option-name">全不对</span><span class="option-address">高德给出的候选都不是我收藏的地点</span></span>
+                  </label>
+                </div>
+                <div class="card-actions"><button class="clear-choice" type="button" data-clear="${item.id}">清除选择</button></div>
+              </div>
+            </details>`;
+        }
+
+        function renderAddressCard(item) {
+          const choice = state.progress[item.id];
+          const hasAddress = choice?.kind === "manual_address" && choice.address;
+          return `
+            <button class="address-card ${hasAddress ? "done" : ""}" type="button" data-address-id="${item.id}">
+              <span class="address-head"><span class="address-name">${escapeHtml(item.name)}</span><span class="address-state">${hasAddress ? "已填写" : "填写地址"}</span></span>
+              <span class="address-meta">${escapeHtml(item.city || "城市未知")} · ${escapeHtml(item.source)}</span>
+              ${hasAddress ? `<span class="saved-address">${escapeHtml(choice.address)}</span>` : `<span class="saved-address">${choice?.kind === "all_wrong" ? "候选全不对，请补充正确地址" : "点击打开地址输入框"}</span>`}
+            </button>`;
+        }
+
+        function renderTagCard(place) {
+          const selected = currentTags(place);
+          const modified = tagChanged(place);
+          const options = TAG_OPTIONS.map((tag) => `
+            <label class="tag-choice">
+              <input type="checkbox" value="${tag}" ${selected.includes(tag) ? "checked" : ""}>
+              <span>${tag}</span>
+            </label>`).join("");
+          return `
+            <article class="tag-card ${modified ? "modified" : ""}" data-tag-id="${escapeHtml(place.id)}">
+              <div class="tag-head"><span class="tag-name">${escapeHtml(place.name)}</span><span class="tag-state">${modified ? "已调整" : "当前标签"}</span></div>
+              <p class="tag-meta">${escapeHtml(place.city)} · ${escapeHtml(place.district)} · ${escapeHtml(place.address)}</p>
+              <div class="tag-options">${options}</div>
+            </article>`;
+        }
+
+        function render() {
+          const groups = getGroups();
+          const visible = state.tab === "tags" ? places.filter(tagMatches) : groups[state.tab].filter(reviewMatches);
+          $("#toggleText").textContent = state.tab === "tags" ? "只看已调整" : "只看未确认";
+          if (state.tab === "candidates") {
+            root.innerHTML = `
+              <div class="section-heading"><div><h2>功能 1 · 选择题</h2><p>逐条打开，可多选正确候选；“全不对”会自动转入填空题</p></div><p>${visible.length} 个当前可见</p></div>
+              ${visible.length ? visible.map(renderCandidateCard).join("") : '<div class="empty">这里暂时没有符合条件的地点。</div>'}`;
+          } else if (state.tab === "addresses") {
+            root.innerHTML = `
+              <div class="section-heading"><div><h2>功能 2 · 填空题</h2><p>点击地点，在弹窗中填写完整地址</p></div><p>${visible.length} 个当前可见</p></div>
+              ${visible.length ? `<div class="address-list">${visible.map(renderAddressCard).join("")}</div>` : '<div class="empty">这里暂时没有符合条件的地点。</div>'}`;
+          } else {
+            root.innerHTML = `
+              <div class="section-heading"><div><h2>功能 3 · 标签多选题</h2><p>为已有地点选择一个或多个标签；至少保留一个</p></div><p>${visible.length} 个当前可见</p></div>
+              ${visible.length ? `<div class="tag-list">${visible.map(renderTagCard).join("")}</div>` : '<div class="empty">这里暂时没有符合条件的地点。</div>'}`;
+          }
+          bindRenderedEvents();
+          updateStats();
+        }
+
+        function bindRenderedEvents() {
+          root.querySelectorAll('.review-card input[type="checkbox"]').forEach((checkbox) => {
+            checkbox.addEventListener("change", (event) => {
+              const card = event.target.closest(".review-card");
+              const itemId = card.dataset.id;
+              const previous = state.progress[itemId];
+              if (event.target.value === "__all_wrong__") {
+                if (event.target.checked) state.progress[itemId] = { kind: "all_wrong", savedAt: new Date().toISOString() };
+                else delete state.progress[itemId];
+              } else {
+                const ids = new Set(previous?.kind === "candidate" ? [previous.candidateId] : (previous?.candidateIds || []));
+                if (event.target.checked) ids.add(event.target.value);
+                else ids.delete(event.target.value);
+                if (ids.size) state.progress[itemId] = { kind: "candidates", candidateIds: [...ids], savedAt: new Date().toISOString() };
+                else delete state.progress[itemId];
+              }
+              saveProgress();
+              render();
+              const reopened = root.querySelector(`[data-id="${itemId}"]`);
+              if (reopened) reopened.open = true;
+              showToast("选择已自动保存");
+            });
+          });
+          root.querySelectorAll("[data-clear]").forEach((button) => {
+            button.addEventListener("click", () => {
+              delete state.progress[button.dataset.clear];
+              saveProgress(); render(); showToast("已清除这条选择");
+            });
+          });
+          root.querySelectorAll("[data-address-id]").forEach((button) => {
+            button.addEventListener("click", () => openModal(button.dataset.addressId));
+          });
+          root.querySelectorAll("[data-tag-id] input[type=\"checkbox\"]").forEach((checkbox) => {
+            checkbox.addEventListener("change", (event) => {
+              const card = event.target.closest("[data-tag-id]");
+              const place = places.find((entry) => entry.id === card.dataset.tagId);
+              const selected = [...card.querySelectorAll('input[type="checkbox"]:checked')].map((input) => input.value);
+              if (!selected.length) {
+                event.target.checked = true;
+                showToast("每个地点至少保留一个标签");
+                return;
+              }
+              const key = tagKey(place.id);
+              if (tagsEqual(selected, originalTags(place))) delete state.progress[key];
+              else state.progress[key] = { kind: "tags", tags: selected, savedAt: new Date().toISOString() };
+              saveProgress();
+              if (state.pendingOnly) render();
+              else {
+                card.classList.toggle("modified", tagChanged(place));
+                card.querySelector(".tag-state").textContent = tagChanged(place) ? "已调整" : "当前标签";
+                updateStats();
+              }
+              showToast("标签已自动保存");
+            });
+          });
+        }
+
+        function updateStats() {
+          const groups = getGroups();
+          const doneTotal = items.filter(isDone).length;
+          const candidateDone = originalCandidateItems.filter((item) => Boolean(state.progress[item.id])).length;
+          const addressDone = groups.addresses.filter(isDone).length;
+          const percent = items.length ? Math.round(doneTotal / items.length * 100) : 0;
+          $("#progressText").textContent = `${doneTotal} / ${items.length}`;
+          $("#progressPercent").textContent = `${percent}%`;
+          $("#progressFill").style.width = `${percent}%`;
+          $("#candidateStat").textContent = `${candidateDone} / ${originalCandidateItems.length}`;
+          $("#addressStat").textContent = `${addressDone} / ${groups.addresses.length}`;
+          $("#candidateTabCount").textContent = groups.candidates.filter((item) => !isDone(item)).length;
+          $("#addressTabCount").textContent = groups.addresses.length - addressDone;
+          const tagChanges = places.filter(tagChanged).length;
+          $("#tagStat").textContent = `${tagChanges} 处`;
+          $("#tagTabCount").textContent = tagChanges;
+        }
+
+        function openModal(itemId) {
+          const item = getGroups().addresses.find((entry) => entry.id === itemId);
+          if (!item) return;
+          state.modalItemId = itemId;
+          $("#modalTitle").textContent = item.name;
+          const choice = state.progress[itemId];
+          $("#addressInput").value = choice?.address || "";
+          $("#deleteAddress").style.visibility = choice?.kind === "manual_address" ? "visible" : "hidden";
+          $("#modalBackdrop").classList.add("open");
+          requestAnimationFrame(() => $("#addressInput").focus());
+        }
+
+        function closeModal() {
+          state.modalItemId = null;
+          $("#modalBackdrop").classList.remove("open");
+        }
+
+        function saveAddress() {
+          const address = $("#addressInput").value.trim();
+          if (!address) {
+            $("#addressInput").focus();
+            showToast("请先填写地址");
+            return;
+          }
+          state.progress[state.modalItemId] = { kind: "manual_address", address, savedAt: new Date().toISOString() };
+          saveProgress(); closeModal(); render(); showToast("地址已自动保存");
+        }
+
+        function exportResults() {
+          const results = [];
+          for (const item of items) {
+            const choice = state.progress[item.id];
+            if (!choice) continue;
+            const record = { id: item.id, name: item.name, city: item.city, category: item.category, source: item.source, ...choice };
+            if (choice.kind === "candidate") {
+              record.candidateIds = [choice.candidateId];
+              delete record.candidateId;
+              record.kind = "candidates";
+            }
+            if (record.kind === "candidates") {
+              record.selectedCandidates = item.candidates.filter((candidate) => record.candidateIds.includes(candidate.id));
+            }
+            results.push(record);
+          }
+          const tagChanges = places.filter(tagChanged).map((place) => ({
+            id: place.id,
+            name: place.name,
+            city: place.city,
+            tags: currentTags(place),
+            savedAt: state.progress[tagKey(place.id)].savedAt
+          }));
+          const payload = {
+            schemaVersion: 2,
+            exportedAt: new Date().toISOString(),
+            summary: { reviewed: results.length, reviewTotal: items.length, tagChanges: tagChanges.length },
+            results,
+            tagChanges
+          };
+          const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
+          const link = document.createElement("a");
+          const date = new Date().toISOString().slice(0, 10);
+          link.href = URL.createObjectURL(blob);
+          link.download = `地图校对结果-${date}.json`;
+          link.click();
+          setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+          showToast(`已导出 ${results.length} 条地点校对和 ${tagChanges.length} 条标签调整`);
+        }
+
+        function showToast(message) {
+          const toast = $("#toast");
+          toast.textContent = message;
+          toast.classList.add("show");
+          clearTimeout(toastTimer);
+          toastTimer = setTimeout(() => toast.classList.remove("show"), 1800);
+        }
+
+        function bindGlobalEvents() {
+          document.querySelectorAll(".tab").forEach((tab) => tab.addEventListener("click", () => {
+            state.tab = tab.dataset.tab;
+            state.pendingOnly = false;
+            $("#pendingOnly").checked = false;
+            document.querySelectorAll(".tab").forEach((node) => node.classList.toggle("active", node === tab));
+            render();
+          }));
+          $("#searchInput").addEventListener("input", (event) => { state.query = event.target.value.trim(); render(); });
+          $("#pendingOnly").addEventListener("change", (event) => { state.pendingOnly = event.target.checked; render(); });
+          $("#exportBtn").addEventListener("click", exportResults);
+          $("#modalClose").addEventListener("click", closeModal);
+          $("#modalCancel").addEventListener("click", closeModal);
+          $("#saveAddress").addEventListener("click", saveAddress);
+          $("#deleteAddress").addEventListener("click", () => {
+            if (!state.modalItemId) return;
+            const item = items.find((entry) => entry.id === state.modalItemId);
+            if (item?.candidates?.length) state.progress[state.modalItemId] = { kind: "all_wrong", savedAt: new Date().toISOString() };
+            else delete state.progress[state.modalItemId];
+            saveProgress(); closeModal(); render(); showToast("已清除这条地址");
+          });
+          $("#modalBackdrop").addEventListener("click", (event) => { if (event.target === event.currentTarget) closeModal(); });
+          document.addEventListener("keydown", (event) => {
+            if (event.key === "Escape") closeModal();
+            if ((event.metaKey || event.ctrlKey) && event.key === "Enter" && state.modalItemId) saveAddress();
+          });
+        }
+
+        loadProgress(); bindGlobalEvents(); render();
+      })();
+    </script>
+  </body>
+</html>

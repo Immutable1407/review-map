@@ -1,0 +1,6 @@
+[
+  {"id":"demo:choose-branch","name":"示例分店待确认","city":"北京","category":"咖啡","source":"example-input.json","reason":"合成候选，用于体验多选校对","recommendedFood":[],"sourceIds":["example:city-notes"],"candidates":[
+    {"id":"demo:branch-east","name":"示例咖啡东店","district":"示例街区","address":"合成候选地址 A","location":[116.407,39.918]},
+    {"id":"demo:branch-west","name":"示例咖啡西店","district":"示例街区","address":"合成候选地址 B","location":[116.398,39.918]}]},
+  {"id":"demo:needs-address","name":"示例手填地址","city":"北京","category":"美食","source":"example-input.json","reason":"没有可确认的候选","recommendedFood":[],"candidates":[]}
+]

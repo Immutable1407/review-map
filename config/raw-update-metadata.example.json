@@ -1,0 +1,10 @@
+{
+  "2000-1-1_update.md": {
+    "示例纸页咖啡": {
+      "city": "北京",
+      "category": "咖啡",
+      "sourceIds": ["example:city-notes"],
+      "sourceUrls": ["https://example.org/city-notes"]
+    }
+  }
+}
